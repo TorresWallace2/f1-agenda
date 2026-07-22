@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import { mapLimit } from "@/lib/data/concurrency";
 import { getCircuitMetadata } from "@/lib/data/static-metadata";
 import type { DriverStanding, RaceResult, RaceRound, TeamStanding } from "@/lib/data/types";
 import { fallbackAgendaData } from "@/lib/data/sample-data";
@@ -302,33 +303,38 @@ export async function getF2Calendar(season: number): Promise<RaceRound[]> {
 }
 
 export async function getF2OfficialSessionResults(season: number, rounds: RaceRound[]): Promise<RaceResult[]> {
-  const f2Rounds = rounds.filter((round) => round.series === "F2");
+  const f2Rounds = rounds.filter((round) => round.series === "F2" && round.sessions.some((session) => session.status === "finished"));
   if (!f2Rounds.length) return [];
 
   const driversHtml = await fetchHtml(`${F2_BASE}/en/drivers`);
   const nationalityCodes = driversHtml ? parseF2DriverNationalityCodes(driversHtml) : {};
 
-  const resultGroups = await Promise.all(
-    f2Rounds.map(async (round) => {
+  const resultGroups = await mapLimit(
+    f2Rounds,
+    3,
+    async (round) => {
       const raceHtml = await fetchHtml(`${F2_BASE}/en/racing/${season}/${officialRaceSlug(round.slug)}`);
       if (!raceHtml) return [];
 
       const sessions = parseMeetingSessions(raceHtml, season);
-      const sessionResults = await Promise.all(
-        sessions.map(async (session) => {
+      const availableSessions = sessions.filter((session) => session.isAvailable && session.state !== "upcoming");
+      const sessionResults = await mapLimit(
+        availableSessions,
+        2,
+        async (session) => {
           const sessionKind = sessionKindFromOfficialSession(session.session);
-          if (!sessionKind || !session.isAvailable || session.state === "upcoming") return [];
+          if (!sessionKind) return [];
 
           const embeddedResults = session.results;
           const response = session.value ? await fetchF2Json<OfficialF2SessionResultsResponse>(`${F2_RESULTS_BASE}/${session.value}`) : null;
           const officialResults = response?.sessionResults?.results ?? embeddedResults ?? [];
 
           return parseOfficialF2Results(officialResults, round.round, sessionKind, nationalityCodes);
-        })
+        }
       );
 
       return sessionResults.flat();
-    })
+    }
   );
 
   return resultGroups.flat();

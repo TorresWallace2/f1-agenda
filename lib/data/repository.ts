@@ -21,11 +21,13 @@ export async function loadAgendaData(season = 2026): Promise<AgendaData> {
     getF2TeamStandings(season)
   ]);
 
-  const completedF1Rounds = f1Calendar.data
-    .filter((round) => round.sessions.some((session) => session.status === "finished"))
-    .map((round) => round.round);
+  const completedF1RoundSessions = new Map(
+    f1Calendar.data
+      .map((round) => [round.round, new Set(round.sessions.filter((session) => session.status === "finished").map((session) => session.kind))] as const)
+      .filter(([, sessions]) => sessions.size)
+  );
   const [officialF1Results, f1RaceResults, f1QualifyingResults, f1SprintResults] = await Promise.all([
-    getF1OfficialSessionResults(season, completedF1Rounds),
+    getF1OfficialSessionResults(season, completedF1RoundSessions),
     getF1RaceResults(season),
     getF1QualifyingResults(season),
     getF1SprintResults(season)

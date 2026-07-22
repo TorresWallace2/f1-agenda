@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import { mapLimit } from "@/lib/data/concurrency";
 import { getCircuitMetadata } from "@/lib/data/static-metadata";
 import type { DriverStanding, RaceResult, RaceRound, TeamStanding } from "@/lib/data/types";
 import { normalizeF1TeamName } from "@/lib/data/f1-normalization";
@@ -327,28 +328,37 @@ function parseOfficialF1ResultTable(html: string, season: number, round: number,
     .filter((result): result is RaceResult => Boolean(result));
 }
 
-export async function getF1OfficialSessionResults(season: number, roundNumbers?: number[]): Promise<RaceResult[]> {
+export async function getF1OfficialSessionResults(season: number, roundSessions?: Map<number, Set<string>>): Promise<RaceResult[]> {
   const raceLinks = await getOfficialF1RaceLinks(season);
-  const wantedRounds = roundNumbers ? new Set(roundNumbers) : null;
-  const sessionPages = [
-    ["practice_1", "practice/1"],
-    ["practice_2", "practice/2"],
-    ["practice_3", "practice/3"],
-    ["qualifying", "qualifying"],
-    ["sprint_qualifying", "sprint-qualifying"],
-    ["sprint", "sprint-results"],
-    ["race", "race-result"]
-  ] as const;
+  const sessionPages: Record<string, string> = {
+    practice_1: "practice/1",
+    practice_2: "practice/2",
+    practice_3: "practice/3",
+    qualifying: "qualifying",
+    sprint_qualifying: "sprint-qualifying",
+    sprint: "sprint-results",
+    race: "race-result"
+  };
 
-  const resultGroups = await Promise.all(
-    raceLinks
-      .filter((race) => !wantedRounds || wantedRounds.has(race.round))
-      .flatMap((race) =>
-        sessionPages.map(async ([sessionKind, path]) => {
-          const html = await fetchText(`${race.baseUrl}/${path}`);
-          return html ? parseOfficialF1ResultTable(html, season, race.round, sessionKind) : [];
-        })
-      )
+  const requests = raceLinks
+    .filter((race) => !roundSessions || roundSessions.has(race.round))
+    .flatMap((race) =>
+      [...(roundSessions?.get(race.round) ?? new Set(Object.keys(sessionPages)))]
+        .filter((sessionKind) => sessionPages[sessionKind])
+        .map((sessionKind) => ({
+          round: race.round,
+          sessionKind,
+          url: `${race.baseUrl}/${sessionPages[sessionKind]}`
+        }))
+    );
+
+  const resultGroups = await mapLimit(
+    requests,
+    4,
+    async (request) => {
+      const html = await fetchText(request.url);
+      return html ? parseOfficialF1ResultTable(html, season, request.round, request.sessionKind) : [];
+    }
   );
 
   return resultGroups.flat();
