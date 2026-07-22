@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: #070b0e;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(245, 31, 47, 0.2), transparent 26rem),
+    linear-gradient(135deg, #05080b 0%, #0a1015 45%, #0f1519 100%);
+  color: #f4f7fa;
+}
+
+button,
+select {
+  font: inherit;
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.session-grid {
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}

@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: agenda-f1-f2
+    runtime: node
+    plan: starter
+    buildCommand: npm ci && npm run render:build
+    startCommand: npm run render:start
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    disk:
+      name: agenda-f1-f2-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        value: file:/var/data/agenda-f1-f2.db
+      - key: NEXTAUTH_SECRET
+        generateValue: true
+      - key: NEXTAUTH_URL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
