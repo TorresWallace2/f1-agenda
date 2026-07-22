@@ -32,13 +32,13 @@ Configuracao do servico:
 
 Variaveis de ambiente no Render:
 
-- `DATABASE_URL`: `file:./dev.db`
+- `DATABASE_URL`: URL Postgres do Supabase
 - `NEXTAUTH_URL`: URL publica do servico, por exemplo `https://agenda-f1-f2.onrender.com`
 - `NEXTAUTH_SECRET`: gere uma string longa aleatoria
 - `GOOGLE_CLIENT_ID`: Client ID do OAuth Google
 - `GOOGLE_CLIENT_SECRET`: Client Secret do OAuth Google
 
-Importante: Web Services Free nao preservam alteracoes no filesystem local. Como esta versao usa SQLite, login/sessoes/links do Google Agenda podem resetar quando o Render reiniciar ou redeployar. Os dados de F1/F2 continuam vindo das fontes oficiais.
+Importante: mantenha `DATABASE_URL` somente nas variaveis de ambiente do Render/Supabase. Nao coloque usuario, senha ou connection string real no Git.
 
 No Google Cloud Console, adicione a callback de producao:
 
