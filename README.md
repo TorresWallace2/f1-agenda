@@ -24,7 +24,7 @@ Configuracao do servico:
 
 - Runtime: `Node`
 - Branch: `main`
-- Build Command: `npm ci && npm run render:build`
+- Build Command: `npm ci --include=dev && npm run render:build`
 - Start Command: `npm run render:start`
 - Health Check Path: `/api/health`
 - Instance Type: `Free`
